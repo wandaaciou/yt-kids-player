@@ -38,7 +38,10 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(kidsPage, /enablejsapi=1/);
   assert.match(kidsPage, /controls=0/);
   assert.match(kidsPage, /播放影片/);
+  assert.match(kidsPage, /上一支/);
+  assert.match(kidsPage, /下一支/);
   assert.match(globalStyles, /pointer-events:\s*none/);
+  assert.match(globalStyles, /primary-kid-control/);
   assert.match(kidsPage, /fs=0/);
   assert.doesNotMatch(kidsPage, /YouTube 搜尋審核/);
   assert.match(gitignore, /^\.env\*$/m);

@@ -35,8 +35,13 @@ export default function KidsPage() {
   const currentVideo =
     control.approvedVideos.find((video) => video.id === control.currentVideoId) ??
     control.approvedVideos[0];
+  const currentVideoIndex = Math.max(
+    control.approvedVideos.findIndex((video) => video.id === currentVideo?.id),
+    0,
+  );
   const isLocked = control.status === "locked";
   const canPlay = currentVideo && control.status === "allowed" && !isLocked;
+  const hasMultipleVideos = control.approvedVideos.length > 1;
 
   useEffect(() => {
     setIsPlaying(false);
@@ -63,6 +68,28 @@ export default function KidsPage() {
     setIsPlaying(nextIsPlaying);
   }
 
+  function chooseVideo(nextIndex: number) {
+    const videoCount = control.approvedVideos.length;
+
+    if (!videoCount || isLocked) {
+      return;
+    }
+
+    const normalizedIndex = (nextIndex + videoCount) % videoCount;
+    const nextVideo = control.approvedVideos[normalizedIndex];
+
+    setControl((current) => {
+      const nextControl = {
+        ...current,
+        currentVideoId: nextVideo.id,
+      };
+
+      window.localStorage.setItem(controlStorageKey, JSON.stringify(nextControl));
+
+      return nextControl;
+    });
+  }
+
   return (
     <main className="app-shell kids-shell">
       <nav className="topbar" aria-label="主導覽">
@@ -79,12 +106,15 @@ export default function KidsPage() {
       </nav>
 
       <section className="kid-panel solo-kid-panel">
-        <div className="kid-topbar">
+        <div className="kid-player-header">
           <div>
             <p className="eyebrow">酸菜觀看頁</p>
-            <h2>今天可以看</h2>
+            <h1>{currentVideo?.title ?? "今天沒有影片"}</h1>
           </div>
-          <span>{statusLabel(control.status)}</span>
+          <div className="kid-time-pill">
+            <span>{statusLabel(control.status)}</span>
+            <strong>剩 {control.timer} 分鐘</strong>
+          </div>
         </div>
 
         <div className="player-frame">
@@ -113,8 +143,29 @@ export default function KidsPage() {
         </div>
 
         <div className="kid-big-controls" aria-label="酸菜播放控制">
-          <button type="button" disabled={!canPlay} onClick={togglePlayback}>
+          <button
+            className="secondary-kid-control"
+            type="button"
+            disabled={!hasMultipleVideos || isLocked}
+            onClick={() => chooseVideo(currentVideoIndex - 1)}
+          >
+            上一支
+          </button>
+          <button
+            className="primary-kid-control"
+            type="button"
+            disabled={!canPlay}
+            onClick={togglePlayback}
+          >
             {isPlaying ? "暫停影片" : "播放影片"}
+          </button>
+          <button
+            className="secondary-kid-control"
+            type="button"
+            disabled={!hasMultipleVideos || isLocked}
+            onClick={() => chooseVideo(currentVideoIndex + 1)}
+          >
+            下一支
           </button>
         </div>
 
@@ -126,10 +177,19 @@ export default function KidsPage() {
               type="button"
               disabled={isLocked}
               onClick={() =>
-                setControl((current) => ({
-                  ...current,
-                  currentVideoId: video.id,
-                }))
+                setControl((current) => {
+                  const nextControl = {
+                    ...current,
+                    currentVideoId: video.id,
+                  };
+
+                  window.localStorage.setItem(
+                    controlStorageKey,
+                    JSON.stringify(nextControl),
+                  );
+
+                  return nextControl;
+                })
               }
             >
               <img src={video.thumbnail} alt="" />
