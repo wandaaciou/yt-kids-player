@@ -12,7 +12,9 @@ import {
 export default function KidsPage() {
   const [control, setControl] = useState<PlayerControl>(defaultControl);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
+  const playerShellRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     function readControl() {
@@ -46,6 +48,18 @@ export default function KidsPage() {
   useEffect(() => {
     setIsPlaying(false);
   }, [control.currentVideoId, control.status]);
+
+  useEffect(() => {
+    function syncFullscreenState() {
+      setIsFullscreen(document.fullscreenElement === playerShellRef.current);
+    }
+
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+    };
+  }, []);
 
   function sendPlayerCommand(command: "playVideo" | "pauseVideo") {
     playerRef.current?.contentWindow?.postMessage(
@@ -90,6 +104,19 @@ export default function KidsPage() {
     });
   }
 
+  async function toggleFullscreen() {
+    if (!playerShellRef.current) {
+      return;
+    }
+
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await playerShellRef.current.requestFullscreen();
+  }
+
   return (
     <main className="app-shell kids-shell">
       <nav className="topbar" aria-label="主導覽">
@@ -105,7 +132,7 @@ export default function KidsPage() {
         </Link>
       </nav>
 
-      <section className="kid-panel solo-kid-panel">
+      <section className="kid-panel solo-kid-panel" ref={playerShellRef}>
         <div className="kid-player-header">
           <div>
             <p className="eyebrow">酸菜觀看頁</p>
@@ -114,6 +141,9 @@ export default function KidsPage() {
           <div className="kid-time-pill">
             <span>{statusLabel(control.status)}</span>
             <strong>剩 {control.timer} 分鐘</strong>
+            <button type="button" onClick={toggleFullscreen}>
+              {isFullscreen ? "離開全螢幕" : "全螢幕"}
+            </button>
           </div>
         </div>
 
