@@ -195,6 +195,30 @@ export default function ParentPage() {
     }
   }
 
+  function progressLabel(videoId: string) {
+    const progress = control.watchProgress?.find(
+      (item) => item.videoId === videoId,
+    );
+
+    if (!progress) {
+      return "尚未開始";
+    }
+
+    if (progress.completed) {
+      return "已看完";
+    }
+
+    return `看到 ${formatWatchTime(progress.progressSeconds)}`;
+  }
+
+  function formatWatchTime(seconds: number) {
+    const safeSeconds = Math.max(0, Math.floor(seconds));
+    const minutes = Math.floor(safeSeconds / 60);
+    const remainingSeconds = String(safeSeconds % 60).padStart(2, "0");
+
+    return `${minutes}:${remainingSeconds}`;
+  }
+
   return (
     <main className="app-shell">
       <nav className="topbar" aria-label="主導覽">
@@ -217,8 +241,11 @@ export default function ParentPage() {
         </div>
         <div className="status-strip" aria-live="polite">
           <span>已核准 {control.approvedVideos.length}/3</span>
+          <span>
+            今天已看完 {control.completedCount ?? 0}/
+            {control.approvedVideos.length}
+          </span>
           <span>{statusLabel(control.status)}</span>
-          <span>倒數 {control.timer} 分鐘</span>
           <span>{cloudStatus}</span>
         </div>
       </section>
@@ -331,7 +358,7 @@ export default function ParentPage() {
           </div>
 
           <label className="timer-control">
-            <span>倒數分鐘</span>
+            <span>備用分鐘</span>
             <input
               type="range"
               min="5"
@@ -360,7 +387,8 @@ export default function ParentPage() {
                   disabled={pendingControl}
                   onClick={() => updateControl({ currentVideoId: video.id })}
                 >
-                  {video.title}
+                  <span>{video.title}</span>
+                  <small>{progressLabel(video.id)}</small>
                 </button>
                 <button
                   type="button"

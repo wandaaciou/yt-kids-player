@@ -16,6 +16,12 @@ export default function KidsPage() {
   const previousStatusRef = useRef(control.status);
   const controlsTimerRef = useRef<number | null>(null);
   const autoAdvanceRef = useRef(false);
+  const progressTimerRef = useRef<number | null>(null);
+  const lastProgressSyncRef = useRef(0);
+  const latestProgressRef = useRef({
+    progressSeconds: 0,
+    durationSeconds: 0,
+  });
 
   useEffect(() => {
     readControl();
@@ -52,6 +58,9 @@ export default function KidsPage() {
   );
   const isLocked = control.status === "locked";
   const canPlay = currentVideo && control.status === "allowed" && !isLocked;
+  const currentProgress = control.watchProgress?.find(
+    (progress) => progress.videoId === currentVideo?.id,
+  );
 
   useEffect(() => {
     if (!autoAdvanceRef.current) {
@@ -84,6 +93,7 @@ export default function KidsPage() {
   useEffect(() => {
     return () => {
       clearControlsTimer();
+      clearProgressTimer();
     };
   }, []);
 
@@ -93,6 +103,7 @@ export default function KidsPage() {
 
     if (!currentVideo || isLocked || control.status === "paused") {
       sendPlayerCommand("pauseVideo");
+      saveCurrentProgress({ immediate: true });
       setIsPlaying(false);
       revealControls();
       return;
@@ -140,6 +151,23 @@ export default function KidsPage() {
         typeof event.data === "string" ? safeParsePlayerEvent(event.data) : event.data;
       const playerState = data?.info?.playerState ?? data?.playerState;
 
+      if (typeof data?.info?.currentTime === "number") {
+        latestProgressRef.current.progressSeconds = data.info.currentTime;
+      }
+
+      if (typeof data?.info?.duration === "number") {
+        latestProgressRef.current.durationSeconds = data.info.duration;
+      }
+
+      if (shouldMarkComplete()) {
+        playNextVideo();
+        return;
+      }
+
+      if (isPlaying && control.status === "allowed") {
+        saveCurrentProgress();
+      }
+
       if (playerState === 0) {
         playNextVideo();
       }
@@ -150,14 +178,71 @@ export default function KidsPage() {
     return () => {
       window.removeEventListener("message", handlePlayerMessage);
     };
-  });
+  }, [control.status, currentVideo?.id, isPlaying]);
 
-  function sendPlayerCommand(command: "playVideo" | "pauseVideo") {
+  useEffect(() => {
+    if (!currentVideo || control.status !== "allowed") {
+      clearProgressTimer();
+      return;
+    }
+
+    clearProgressTimer();
+    progressTimerRef.current = window.setInterval(() => {
+      sendPlayerCommand("getCurrentTime");
+      sendPlayerCommand("getDuration");
+      saveCurrentProgress();
+    }, 3000);
+
+    return () => {
+      clearProgressTimer();
+    };
+  }, [control.status, currentVideo?.id]);
+
+  useEffect(() => {
+    latestProgressRef.current = {
+      progressSeconds: currentProgress?.progressSeconds ?? 0,
+      durationSeconds: currentProgress?.durationSeconds ?? 0,
+    };
+  }, [
+    currentProgress?.durationSeconds,
+    currentProgress?.progressSeconds,
+    currentVideo?.id,
+  ]);
+
+  useEffect(() => {
+    if (!currentVideo || currentProgress?.completed) {
+      return;
+    }
+
+    const resumeSeconds = currentProgress?.progressSeconds ?? 0;
+
+    if (resumeSeconds < 5) {
+      return;
+    }
+
+    const resumeId = window.setTimeout(() => {
+      sendPlayerCommand("seekTo", [resumeSeconds, true]);
+    }, 800);
+
+    return () => {
+      window.clearTimeout(resumeId);
+    };
+  }, [currentProgress?.completed, currentProgress?.progressSeconds, currentVideo?.id]);
+
+  function sendPlayerCommand(
+    command:
+      | "playVideo"
+      | "pauseVideo"
+      | "seekTo"
+      | "getCurrentTime"
+      | "getDuration",
+    args: unknown[] = [],
+  ) {
     playerRef.current?.contentWindow?.postMessage(
       JSON.stringify({
         event: "command",
         func: command,
-        args: [],
+        args,
       }),
       "*",
     );
@@ -166,7 +251,11 @@ export default function KidsPage() {
   function safeParsePlayerEvent(data: string) {
     try {
       return JSON.parse(data) as {
-        info?: { playerState?: number };
+        info?: {
+          currentTime?: number;
+          duration?: number;
+          playerState?: number;
+        };
         playerState?: number;
       };
     } catch {
@@ -181,6 +270,15 @@ export default function KidsPage() {
 
     window.clearTimeout(controlsTimerRef.current);
     controlsTimerRef.current = null;
+  }
+
+  function clearProgressTimer() {
+    if (progressTimerRef.current === null) {
+      return;
+    }
+
+    window.clearInterval(progressTimerRef.current);
+    progressTimerRef.current = null;
   }
 
   function revealControls(autoHide = false) {
@@ -204,6 +302,9 @@ export default function KidsPage() {
 
     const nextIsPlaying = !isPlaying;
     sendPlayerCommand(nextIsPlaying ? "playVideo" : "pauseVideo");
+    if (!nextIsPlaying) {
+      saveCurrentProgress({ immediate: true });
+    }
     setIsPlaying(nextIsPlaying);
     revealControls(nextIsPlaying);
   }
@@ -224,13 +325,56 @@ export default function KidsPage() {
   }
 
   function playNextVideo() {
-    if (control.approvedVideos.length < 2 || control.status !== "allowed") {
+    if (control.status !== "allowed" || !currentVideo) {
       setIsPlaying(false);
       revealControls();
       return;
     }
 
-    chooseVideo(currentVideoIndex + 1, true);
+    saveCurrentProgress({ completed: true, immediate: true });
+  }
+
+  function shouldMarkComplete() {
+    const { durationSeconds, progressSeconds } = latestProgressRef.current;
+
+    return durationSeconds > 0 && progressSeconds >= durationSeconds * 0.9;
+  }
+
+  async function saveCurrentProgress({
+    completed = false,
+    immediate = false,
+  }: {
+    completed?: boolean;
+    immediate?: boolean;
+  } = {}) {
+    if (!currentVideo) {
+      return;
+    }
+
+    const now = Date.now();
+
+    if (!completed && !immediate && now - lastProgressSyncRef.current < 10_000) {
+      return;
+    }
+
+    lastProgressSyncRef.current = now;
+    const response = await fetch("/api/family/progress", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        videoId: currentVideo.id,
+        progressSeconds: Math.floor(latestProgressRef.current.progressSeconds),
+        durationSeconds: Math.floor(latestProgressRef.current.durationSeconds),
+        completed,
+      }),
+    });
+
+    if (response.ok) {
+      const nextControl = (await response.json()) as PlayerControl;
+      autoAdvanceRef.current =
+        completed && nextControl.currentVideoId !== currentVideo.id;
+      setControl(nextControl);
+    }
   }
 
   async function updateControl(input: { currentVideoId: string }) {
@@ -285,6 +429,10 @@ export default function KidsPage() {
                   allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
                   referrerPolicy="strict-origin-when-cross-origin"
                   sandbox="allow-scripts allow-same-origin allow-presentation"
+                  onLoad={() => {
+                    sendPlayerCommand("getCurrentTime");
+                    sendPlayerCommand("getDuration");
+                  }}
                 />
                 {control.status === "paused" ? (
                   <div className="lock-screen pause-screen">

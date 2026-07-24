@@ -9,6 +9,14 @@ export type Video = {
 
 export type PlayerStatus = "allowed" | "paused" | "locked";
 
+export type WatchProgress = {
+  videoId: string;
+  progressSeconds: number;
+  durationSeconds: number;
+  completed: boolean;
+  completedAt?: string | null;
+};
+
 export type PlayerControl = {
   approvedVideos: Video[];
   currentVideoId: string;
@@ -16,6 +24,9 @@ export type PlayerControl = {
   timer: number;
   stopAt?: string | null;
   lockedUntil?: string | null;
+  watchDate?: string;
+  watchProgress?: WatchProgress[];
+  completedCount?: number;
 };
 
 export const searchResults: Video[] = [

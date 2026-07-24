@@ -542,6 +542,24 @@ h3 {
   text-align: left;
 }
 
+.approved-item button:first-child {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
+.approved-item button:first-child span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.approved-item button:first-child small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .approved-item button:last-child {
   background: transparent;
   color: var(--youtube-red);

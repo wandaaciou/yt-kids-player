@@ -27,8 +27,16 @@ test("product source keeps parent approval and child playback separated", async 
     new URL("../app/api/family/state/route.ts", import.meta.url),
     "utf8",
   );
+  const familyProgressRoute = await readFile(
+    new URL("../app/api/family/progress/route.ts", import.meta.url),
+    "utf8",
+  );
   const familySupabase = await readFile(
     new URL("../app/api/family/supabase.ts", import.meta.url),
+    "utf8",
+  );
+  const supabaseSchema = await readFile(
+    new URL("../supabase/schema.sql", import.meta.url),
     "utf8",
   );
   const globalStyles = await readFile(
@@ -53,9 +61,14 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(parentPage, /\/api\/family\/state/);
   assert.match(parentPage, /\/api\/family\/videos/);
   assert.match(parentPage, /已核准 \{control\.approvedVideos\.length\}\/3/);
+  assert.match(parentPage, /今天已看完/);
+  assert.match(parentPage, /progressLabel/);
   assert.match(familyStateRoute, /patchPlayerControl/);
+  assert.match(familyProgressRoute, /saveWatchProgress/);
   assert.match(familySupabase, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(familySupabase, /stop_at/);
+  assert.match(familySupabase, /family_watch_progress/);
+  assert.match(familySupabase, /0\.9/);
+  assert.match(supabaseSchema, /family_watch_progress/);
   assert.doesNotMatch(parentPage, /localStorage/);
   assert.match(youtubeSearchRoute, /process\.env\.YOUTUBE_API_KEY/);
   assert.match(youtubeSearchRoute, /videoEmbeddable/);
@@ -75,6 +88,8 @@ test("product source keeps parent approval and child playback separated", async 
   assert.doesNotMatch(kidsPage, /下一支/);
   assert.match(kidsPage, /handlePlayerMessage/);
   assert.match(kidsPage, /playerState === 0/);
+  assert.match(kidsPage, /\/api\/family\/progress/);
+  assert.match(kidsPage, /seekTo/);
   assert.match(kidsPage, /controls-hidden/);
   assert.match(kidsPage, /kid-player-stage/);
   assert.match(kidsPage, /requestFullscreen/);
