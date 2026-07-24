@@ -666,24 +666,25 @@ h3 {
   bottom: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(120px, 0.7fr) minmax(180px, 1fr) minmax(120px, 0.7fr);
-  gap: 12px;
-  padding: 72px 18px 18px;
+  grid-template-columns: 112px minmax(154px, 220px) 112px;
+  justify-content: center;
+  gap: 10px;
+  padding: 56px 18px 16px;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0));
 }
 
 .kid-big-controls button {
   width: 100%;
-  min-height: 82px;
+  min-height: 54px;
   border-radius: 999px;
-  font-size: 1.35rem;
+  font-size: 1rem;
   font-weight: 900;
 }
 
 .kid-big-controls .primary-kid-control {
   background: var(--youtube-red);
   color: white;
-  font-size: 1.55rem;
+  font-size: 1.15rem;
 }
 
 .kid-big-controls .secondary-kid-control {
@@ -768,8 +769,7 @@ h3 {
 
   .filter-bar,
   .button-grid,
-  .kid-video-strip,
-  .kid-big-controls {
+  .kid-video-strip {
     grid-template-columns: 1fr;
   }
 
@@ -779,9 +779,18 @@ h3 {
   }
 
   .kid-big-controls {
-    position: static;
-    padding: 14px;
-    background: #181818;
+    grid-template-columns: 86px minmax(136px, 1fr) 86px;
+    gap: 8px;
+    padding: 48px 12px 12px;
+  }
+
+  .kid-big-controls button {
+    min-height: 50px;
+    font-size: 0.92rem;
+  }
+
+  .kid-big-controls .primary-kid-control {
+    font-size: 1.02rem;
   }
 }
 
