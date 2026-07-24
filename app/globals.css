@@ -1,16 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f5ef;
-  --foreground: #152027;
-  --muted: #647077;
-  --line: #d8dedc;
+  --background: #f9f9f9;
+  --foreground: #0f0f0f;
+  --muted: #606060;
+  --line: #e5e5e5;
   --panel: #ffffff;
-  --mint: #2f8f83;
-  --mint-dark: #1c665e;
-  --coral: #e06a4f;
-  --sun: #f2bd4c;
-  --ink: #152027;
+  --youtube-red: #ff0033;
+  --youtube-red-dark: #cc0029;
+  --soft-red: #fff0f2;
+  --control-gray: #f2f2f2;
+  --ink: #0f0f0f;
+  --player: #0f0f0f;
 }
 
 @theme inline {
@@ -44,7 +45,7 @@ select {
 button {
   min-height: 44px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--ink);
   color: white;
   cursor: pointer;
@@ -58,7 +59,87 @@ button:disabled {
 
 .app-shell {
   min-height: 100vh;
-  padding: 28px;
+  padding: 0 24px 28px;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: 220px minmax(180px, 520px) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 64px;
+  margin: 0 -24px 18px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.brand-mark strong {
+  overflow: hidden;
+  color: #0f0f0f;
+  font-size: 1.08rem;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play-badge {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--youtube-red);
+  color: white;
+}
+
+.play-badge::before {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid white;
+  border-top: 5px solid transparent;
+  content: "";
+}
+
+.topbar-search {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #cfcfcf;
+  border-radius: 999px;
+  background: white;
+  color: var(--muted);
+}
+
+.topbar-search span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-button {
+  justify-self: end;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  background: var(--youtube-red);
+  font-size: 0.86rem;
 }
 
 .hero-band {
@@ -66,13 +147,12 @@ button:disabled {
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
-  min-height: 180px;
-  padding: 30px;
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(47, 143, 131, 0.95), rgba(21, 32, 39, 0.96)),
-    #2f8f83;
-  color: white;
+  min-height: 128px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
 }
 
 .eyebrow {
@@ -94,8 +174,8 @@ p {
 h1 {
   max-width: 720px;
   margin-bottom: 0;
-  font-size: clamp(2.15rem, 6vw, 4.9rem);
-  line-height: 0.96;
+  font-size: clamp(1.85rem, 4vw, 3.6rem);
+  line-height: 1;
   letter-spacing: 0;
 }
 
@@ -124,9 +204,9 @@ h3 {
 .status-strip span {
   min-height: 34px;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--control-gray);
   font-size: 0.9rem;
   font-weight: 800;
 }
@@ -142,9 +222,9 @@ h3 {
 .control-panel,
 .kid-panel {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--panel);
-  box-shadow: 0 18px 50px rgba(21, 32, 39, 0.08);
+  box-shadow: 0 12px 30px rgba(15, 15, 15, 0.05);
 }
 
 .parent-panel,
@@ -174,7 +254,7 @@ h3 {
   min-width: 132px;
   padding: 0 14px;
   border: 1px solid var(--line);
-  background: white;
+  background: var(--control-gray);
   color: var(--ink);
 }
 
@@ -197,10 +277,10 @@ h3 {
   width: 100%;
   min-height: 46px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fbfcfb;
+  border-radius: 999px;
+  background: #ffffff;
   color: var(--ink);
-  padding: 0 12px;
+  padding: 0 16px;
 }
 
 .filter-bar {
@@ -223,14 +303,14 @@ h3 {
   gap: 8px;
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fbfcfb;
+  border-radius: 999px;
+  background: #ffffff;
 }
 
 .toggle-row input {
   width: 18px;
   height: 18px;
-  accent-color: var(--mint);
+  accent-color: var(--youtube-red);
 }
 
 .result-list {
@@ -245,9 +325,13 @@ h3 {
   gap: 12px;
   min-height: 92px;
   padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: #ffffff;
+}
+
+.video-row:hover {
+  background: #f5f5f5;
 }
 
 .video-row img,
@@ -255,8 +339,8 @@ h3 {
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: 6px;
-  background: #d8dedc;
+  border-radius: 10px;
+  background: #e5e5e5;
 }
 
 .video-row p {
@@ -266,14 +350,14 @@ h3 {
 }
 
 .video-row span {
-  color: var(--mint-dark);
+  color: var(--youtube-red);
   font-size: 0.84rem;
   font-weight: 800;
 }
 
 .video-row button {
   min-width: 68px;
-  background: var(--mint);
+  background: var(--youtube-red);
 }
 
 .button-grid {
@@ -283,11 +367,13 @@ h3 {
 }
 
 .button-grid button {
-  background: var(--mint-dark);
+  background: var(--control-gray);
+  color: var(--ink);
 }
 
 .button-grid .danger-button {
-  background: var(--coral);
+  background: var(--youtube-red);
+  color: white;
 }
 
 .timer-control {
@@ -300,7 +386,7 @@ h3 {
 .timer-control input {
   grid-column: 1 / -1;
   width: 100%;
-  accent-color: var(--mint);
+  accent-color: var(--youtube-red);
 }
 
 .timer-control strong {
@@ -318,12 +404,12 @@ h3 {
   gap: 8px;
   padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .approved-item.active {
-  border-color: var(--mint);
-  background: #eef8f5;
+  border-color: var(--youtube-red);
+  background: var(--soft-red);
 }
 
 .approved-item button {
@@ -335,8 +421,8 @@ h3 {
 }
 
 .approved-item button:last-child {
-  background: #f2f0ea;
-  color: var(--coral);
+  background: var(--control-gray);
+  color: var(--youtube-red);
   text-align: center;
 }
 
@@ -350,7 +436,8 @@ h3 {
   min-height: 36px;
   padding: 9px 13px;
   border-radius: 999px;
-  background: var(--sun);
+  background: var(--soft-red);
+  border: 1px solid #ffd3da;
   color: var(--ink);
   font-size: 0.9rem;
   font-weight: 900;
@@ -360,7 +447,7 @@ h3 {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #101820;
+  background: var(--player);
 }
 
 .player-frame iframe {
@@ -405,14 +492,14 @@ h3 {
   min-height: 72px;
   padding: 8px;
   border: 2px solid transparent;
-  background: #f6f7f4;
+  background: white;
   color: var(--ink);
   text-align: left;
 }
 
 .kid-video-strip button.selected {
-  border-color: var(--mint);
-  background: #eef8f5;
+  border-color: var(--youtube-red);
+  background: var(--soft-red);
 }
 
 .kid-video-strip span {
@@ -425,13 +512,25 @@ h3 {
 
 @media (max-width: 900px) {
   .app-shell {
-    padding: 14px;
+    padding: 0 14px 18px;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr auto;
+    margin: 0 -14px 14px;
+    padding: 0 14px;
+  }
+
+  .topbar-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-bottom: 12px;
   }
 
   .hero-band {
     align-items: flex-start;
     flex-direction: column;
-    min-height: 220px;
+    min-height: 180px;
     padding: 22px;
   }
 

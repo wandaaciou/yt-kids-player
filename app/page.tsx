@@ -106,6 +106,19 @@ export default function Home() {
 
   return (
     <main className="app-shell">
+      <nav className="topbar" aria-label="主導覽">
+        <div className="brand-mark">
+          <span className="play-badge" aria-hidden="true" />
+          <strong>Sauncai Kids</strong>
+        </div>
+        <div className="topbar-search" aria-hidden="true">
+          <span>{keyword}</span>
+        </div>
+        <button className="profile-button" type="button">
+          家長
+        </button>
+      </nav>
+
       <section className="hero-band">
         <div>
           <p className="eyebrow">酸菜播放器</p>
