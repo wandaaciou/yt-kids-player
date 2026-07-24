@@ -472,6 +472,12 @@ h3 {
   background: var(--youtube-red);
 }
 
+.video-row button:disabled {
+  background: var(--control-gray);
+  color: var(--muted);
+  opacity: 1;
+}
+
 .button-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -533,9 +539,15 @@ h3 {
 }
 
 .approved-item button:last-child {
-  background: var(--control-gray);
+  background: transparent;
   color: var(--youtube-red);
   text-align: center;
+}
+
+.approved-item button:last-child:disabled {
+  background: transparent;
+  color: var(--muted);
+  opacity: 1;
 }
 
 .kid-topbar {
