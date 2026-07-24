@@ -364,6 +364,12 @@ h3 {
   margin-bottom: 12px;
 }
 
+.search-input-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 8px;
+}
+
 .search-row label,
 .filter-bar span,
 .timer-control span {
@@ -381,6 +387,12 @@ h3 {
   background: #ffffff;
   color: var(--ink);
   padding: 0 16px;
+}
+
+.search-input-group button {
+  min-height: 46px;
+  background: var(--youtube-red);
+  color: white;
 }
 
 .filter-bar {
@@ -765,6 +777,10 @@ h3 {
 
   .video-row button {
     grid-column: 1 / -1;
+  }
+
+  .search-input-group {
+    grid-template-columns: 1fr;
   }
 
   .filter-bar,

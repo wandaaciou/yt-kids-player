@@ -17,7 +17,8 @@ export default function ParentPage() {
   const [trustedOnly, setTrustedOnly] = useState(true);
   const [control, setControl] = useState<PlayerControl>(defaultControl);
   const [searchVideos, setSearchVideos] = useState<Video[]>(searchResults);
-  const [searchStatus, setSearchStatus] = useState("目前使用測試資料");
+  const [searchStatus, setSearchStatus] = useState("搜尋 YouTube 中");
+  const [searchNonce, setSearchNonce] = useState(0);
   const [cloudStatus, setCloudStatus] = useState("連線雲端中");
 
   useEffect(() => {
@@ -26,66 +27,69 @@ export default function ParentPage() {
 
   useEffect(() => {
     const abortController = new AbortController();
-    const timeoutId = window.setTimeout(async () => {
-      const normalizedKeyword = keyword.trim();
-
-      if (!normalizedKeyword) {
-        setSearchVideos([]);
-        setSearchStatus("請輸入關鍵字");
-        return;
-      }
-
-      setSearchStatus("搜尋 YouTube 中");
-
-      try {
-        const params = new URLSearchParams({
-          q: normalizedKeyword,
-          maxMinutes: String(maxMinutes),
-          trustedOnly: String(trustedOnly),
-        });
-        const response = await fetch(`/api/youtube/search?${params}`, {
-          signal: abortController.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error("YouTube search failed");
-        }
-
-        const data = (await response.json()) as { videos: Video[] };
-        setSearchVideos(data.videos);
-        setSearchStatus(
-          data.videos.length ? "使用真 YouTube 搜尋結果" : "沒有找到符合條件的影片",
-        );
-      } catch (error) {
-        if (abortController.signal.aborted) {
-          return;
-        }
-
-        const normalizedKeyword = keyword.trim().toLowerCase();
-        const fallbackVideos = searchResults.filter((video) => {
-          const matchesKeyword =
-            !normalizedKeyword ||
-            video.title.toLowerCase().includes(normalizedKeyword);
-          const matchesDuration = video.durationMinutes <= maxMinutes;
-          const matchesTrust = !trustedOnly || video.channel.includes("官方");
-
-          return matchesKeyword && matchesDuration && matchesTrust;
-        });
-
-        setSearchVideos(fallbackVideos);
-        setSearchStatus("尚未設定 YouTube API key，暫用測試資料");
-      }
+    const timeoutId = window.setTimeout(() => {
+      searchYouTube(abortController.signal);
     }, 350);
 
     return () => {
       window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [keyword, maxMinutes, trustedOnly]);
+  }, [keyword, maxMinutes, trustedOnly, searchNonce]);
 
   const filteredResults = searchVideos;
 
   const canAddMore = control.approvedVideos.length < 3;
+
+  async function searchYouTube(signal?: AbortSignal) {
+    const normalizedKeyword = keyword.trim();
+
+    if (!normalizedKeyword) {
+      setSearchVideos([]);
+      setSearchStatus("請輸入關鍵字");
+      return;
+    }
+
+    setSearchStatus("搜尋 YouTube 中");
+
+    try {
+      const params = new URLSearchParams({
+        q: normalizedKeyword,
+        maxMinutes: String(maxMinutes),
+        trustedOnly: String(trustedOnly),
+      });
+      const response = await fetch(`/api/youtube/search?${params}`, {
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error("YouTube search failed");
+      }
+
+      const data = (await response.json()) as { videos: Video[] };
+      setSearchVideos(data.videos);
+      setSearchStatus(
+        data.videos.length ? "使用真 YouTube 搜尋結果" : "沒有找到符合條件的影片",
+      );
+    } catch (error) {
+      if (signal?.aborted) {
+        return;
+      }
+
+      const fallbackKeyword = keyword.trim().toLowerCase();
+      const fallbackVideos = searchResults.filter((video) => {
+        const matchesKeyword =
+          !fallbackKeyword || video.title.toLowerCase().includes(fallbackKeyword);
+        const matchesDuration = video.durationMinutes <= maxMinutes;
+        const matchesTrust = !trustedOnly || video.channel.includes("官方");
+
+        return matchesKeyword && matchesDuration && matchesTrust;
+      });
+
+      setSearchVideos(fallbackVideos);
+      setSearchStatus("YouTube 搜尋失敗，暫用測試資料");
+    }
+  }
 
   async function loadControl() {
     try {
@@ -200,11 +204,16 @@ export default function ParentPage() {
 
           <div className="search-row">
             <label htmlFor="keyword">關鍵字</label>
-            <input
-              id="keyword"
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-            />
+            <div className="search-input-group">
+              <input
+                id="keyword"
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+              <button type="button" onClick={() => setSearchNonce((value) => value + 1)}>
+                重新搜尋
+              </button>
+            </div>
           </div>
 
           <div className="filter-bar" aria-label="搜尋篩選">
