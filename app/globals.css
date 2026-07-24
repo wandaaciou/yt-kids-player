@@ -629,6 +629,8 @@ h3 {
   background: var(--player);
 }
 
+.youtube-player-slot,
+.youtube-player-slot iframe,
 .player-frame iframe {
   width: 100%;
   height: 100%;

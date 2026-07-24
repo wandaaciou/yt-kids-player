@@ -80,14 +80,14 @@ test("product source keeps parent approval and child playback separated", async 
   assert.doesNotMatch(kidsPage, /家長設定/);
   assert.doesNotMatch(kidsPage, /topbar-search/);
   assert.match(kidsPage, /youtube-nocookie\.com/);
-  assert.match(kidsPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/);
-  assert.match(kidsPage, /enablejsapi=1/);
-  assert.match(kidsPage, /controls=0/);
+  assert.match(kidsPage, /new window\.YT\.Player/);
+  assert.match(kidsPage, /getCurrentTime/);
+  assert.match(kidsPage, /getDuration/);
+  assert.match(kidsPage, /PlayerState\.ENDED/);
+  assert.match(kidsPage, /controls:\s*0/);
   assert.match(kidsPage, /播放影片/);
   assert.doesNotMatch(kidsPage, /上一支/);
   assert.doesNotMatch(kidsPage, /下一支/);
-  assert.match(kidsPage, /handlePlayerMessage/);
-  assert.match(kidsPage, /playerState === 0/);
   assert.match(kidsPage, /\/api\/family\/progress/);
   assert.match(kidsPage, /seekTo/);
   assert.match(kidsPage, /controls-hidden/);
@@ -100,7 +100,7 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(globalStyles, /pointer-events:\s*none/);
   assert.match(globalStyles, /:fullscreen/);
   assert.match(globalStyles, /primary-kid-control/);
-  assert.match(kidsPage, /fs=0/);
+  assert.match(kidsPage, /fs:\s*0/);
   assert.doesNotMatch(kidsPage, /YouTube 搜尋審核/);
   assert.match(gitignore, /^\.env\*$/m);
   assert.match(gitignore, /^!\.env\.example$/m);

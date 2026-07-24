@@ -1,23 +1,86 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  defaultControl,
-  type PlayerControl,
-} from "../demo-state";
+import { defaultControl, type PlayerControl } from "../demo-state";
+
+type YouTubePlayer = {
+  destroy: () => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  pauseVideo: () => void;
+  playVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+};
+
+type YouTubeConstructor = new (
+  element: HTMLElement,
+  options: {
+    host: string;
+    videoId: string;
+    playerVars: Record<string, number | string>;
+    events: {
+      onReady: () => void;
+      onStateChange: (event: { data: number }) => void;
+    };
+  },
+) => YouTubePlayer;
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: YouTubeConstructor;
+      PlayerState: {
+        ENDED: number;
+        PLAYING: number;
+        PAUSED: number;
+      };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+let youtubeApiPromise: Promise<void> | null = null;
+
+function loadYouTubeApi() {
+  if (window.YT?.Player) {
+    return Promise.resolve();
+  }
+
+  if (!youtubeApiPromise) {
+    youtubeApiPromise = new Promise((resolve) => {
+      const previousReady = window.onYouTubeIframeAPIReady;
+
+      window.onYouTubeIframeAPIReady = () => {
+        previousReady?.();
+        resolve();
+      };
+
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    });
+  }
+
+  return youtubeApiPromise;
+}
 
 export default function KidsPage() {
   const [control, setControl] = useState<PlayerControl>(defaultControl);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const playerRef = useRef<HTMLIFrameElement>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerShellRef = useRef<HTMLElement>(null);
+  const ytPlayerRef = useRef<YouTubePlayer | null>(null);
+  const playerReadyRef = useRef(false);
   const previousStatusRef = useRef(control.status);
   const controlsTimerRef = useRef<number | null>(null);
-  const autoAdvanceRef = useRef(false);
   const progressTimerRef = useRef<number | null>(null);
   const lastProgressSyncRef = useRef(0);
+  const autoPlayAfterLoadRef = useRef(false);
   const latestProgressRef = useRef({
     progressSeconds: 0,
     durationSeconds: 0,
@@ -52,10 +115,6 @@ export default function KidsPage() {
   const currentVideo =
     control.approvedVideos.find((video) => video.id === control.currentVideoId) ??
     control.approvedVideos[0];
-  const currentVideoIndex = Math.max(
-    control.approvedVideos.findIndex((video) => video.id === currentVideo?.id),
-    0,
-  );
   const isLocked = control.status === "locked";
   const canPlay = currentVideo && control.status === "allowed" && !isLocked;
   const currentProgress = control.watchProgress?.find(
@@ -63,23 +122,94 @@ export default function KidsPage() {
   );
 
   useEffect(() => {
-    if (!autoAdvanceRef.current) {
+    if (!currentVideo || !playerContainerRef.current || isLocked) {
+      ytPlayerRef.current?.destroy();
+      ytPlayerRef.current = null;
+      playerReadyRef.current = false;
       setIsPlaying(false);
       revealControls();
       return;
     }
 
-    autoAdvanceRef.current = false;
-    const playNextId = window.setTimeout(() => {
-      sendPlayerCommand("playVideo");
-      setIsPlaying(true);
-      revealControls(true);
-    }, 650);
+    let cancelled = false;
+    playerReadyRef.current = false;
+    ytPlayerRef.current?.destroy();
+    ytPlayerRef.current = null;
+    playerContainerRef.current.innerHTML = "";
+    setIsPlaying(false);
+    revealControls();
+
+    loadYouTubeApi().then(() => {
+      if (cancelled || !window.YT?.Player || !playerContainerRef.current) {
+        return;
+      }
+
+      ytPlayerRef.current = new window.YT.Player(playerContainerRef.current, {
+        host: "https://www.youtube-nocookie.com",
+        videoId: currentVideo.id,
+        playerVars: {
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          modestbranding: 1,
+          playsinline: 1,
+          rel: 0,
+        },
+        events: {
+          onReady: () => {
+            playerReadyRef.current = true;
+            const resumeSeconds = currentProgress?.completed
+              ? 0
+              : currentProgress?.progressSeconds ?? 0;
+
+            latestProgressRef.current = {
+              progressSeconds: resumeSeconds,
+              durationSeconds: currentProgress?.durationSeconds ?? 0,
+            };
+
+            if (resumeSeconds >= 5) {
+              ytPlayerRef.current?.seekTo(resumeSeconds, true);
+            }
+
+            if (autoPlayAfterLoadRef.current && control.status === "allowed") {
+              autoPlayAfterLoadRef.current = false;
+              ytPlayerRef.current?.playVideo();
+              setIsPlaying(true);
+              revealControls(true);
+            }
+          },
+          onStateChange: (event) => {
+            if (event.data === window.YT?.PlayerState.ENDED) {
+              markCurrentVideoCompleted();
+              return;
+            }
+
+            if (event.data === window.YT?.PlayerState.PLAYING) {
+              setIsPlaying(true);
+              revealControls(true);
+              syncLatestProgress();
+              return;
+            }
+
+            if (event.data === window.YT?.PlayerState.PAUSED) {
+              syncLatestProgress();
+              saveCurrentProgress({ immediate: true });
+              setIsPlaying(false);
+              revealControls();
+            }
+          },
+        },
+      });
+    });
 
     return () => {
-      window.clearTimeout(playNextId);
+      cancelled = true;
+      ytPlayerRef.current?.destroy();
+      ytPlayerRef.current = null;
+      playerReadyRef.current = false;
     };
-  }, [control.currentVideoId]);
+  }, [currentVideo?.id, isLocked]);
 
   useEffect(() => {
     if (isPlaying && control.status === "allowed") {
@@ -102,27 +232,18 @@ export default function KidsPage() {
     previousStatusRef.current = control.status;
 
     if (!currentVideo || isLocked || control.status === "paused") {
-      sendPlayerCommand("pauseVideo");
+      syncLatestProgress();
       saveCurrentProgress({ immediate: true });
+      ytPlayerRef.current?.pauseVideo();
       setIsPlaying(false);
       revealControls();
       return;
     }
 
     if (control.status === "allowed" && previousStatus === "paused") {
-      const quickResumeId = window.setTimeout(() => {
-        sendPlayerCommand("playVideo");
-      }, 120);
-      const fallbackResumeId = window.setTimeout(() => {
-        sendPlayerCommand("playVideo");
-        setIsPlaying(true);
-        revealControls(true);
-      }, 650);
-
-      return () => {
-        window.clearTimeout(quickResumeId);
-        window.clearTimeout(fallbackResumeId);
-      };
+      ytPlayerRef.current?.playVideo();
+      setIsPlaying(true);
+      revealControls(true);
     }
   }, [control.status, currentVideo?.id, isLocked]);
 
@@ -139,64 +260,27 @@ export default function KidsPage() {
   }, []);
 
   useEffect(() => {
-    function handlePlayerMessage(event: MessageEvent) {
-      if (
-        typeof event.origin !== "string" ||
-        !event.origin.includes("youtube-nocookie.com")
-      ) {
-        return;
-      }
-
-      const data =
-        typeof event.data === "string" ? safeParsePlayerEvent(event.data) : event.data;
-      const playerState = data?.info?.playerState ?? data?.playerState;
-
-      if (typeof data?.info?.currentTime === "number") {
-        latestProgressRef.current.progressSeconds = data.info.currentTime;
-      }
-
-      if (typeof data?.info?.duration === "number") {
-        latestProgressRef.current.durationSeconds = data.info.duration;
-      }
-
-      if (shouldMarkComplete()) {
-        playNextVideo();
-        return;
-      }
-
-      if (isPlaying && control.status === "allowed") {
-        saveCurrentProgress();
-      }
-
-      if (playerState === 0) {
-        playNextVideo();
-      }
-    }
-
-    window.addEventListener("message", handlePlayerMessage);
-
-    return () => {
-      window.removeEventListener("message", handlePlayerMessage);
-    };
-  }, [control.status, currentVideo?.id, isPlaying]);
-
-  useEffect(() => {
-    if (!currentVideo || control.status !== "allowed") {
+    if (!currentVideo || control.status !== "allowed" || !isPlaying) {
       clearProgressTimer();
       return;
     }
 
     clearProgressTimer();
     progressTimerRef.current = window.setInterval(() => {
-      sendPlayerCommand("getCurrentTime");
-      sendPlayerCommand("getDuration");
+      syncLatestProgress();
+
+      if (shouldMarkComplete()) {
+        markCurrentVideoCompleted();
+        return;
+      }
+
       saveCurrentProgress();
     }, 3000);
 
     return () => {
       clearProgressTimer();
     };
-  }, [control.status, currentVideo?.id]);
+  }, [control.status, currentVideo?.id, isPlaying]);
 
   useEffect(() => {
     latestProgressRef.current = {
@@ -209,58 +293,18 @@ export default function KidsPage() {
     currentVideo?.id,
   ]);
 
-  useEffect(() => {
-    if (!currentVideo || currentProgress?.completed) {
+  function syncLatestProgress() {
+    if (!ytPlayerRef.current || !playerReadyRef.current) {
       return;
     }
 
-    const resumeSeconds = currentProgress?.progressSeconds ?? 0;
+    const progressSeconds = ytPlayerRef.current.getCurrentTime();
+    const durationSeconds = ytPlayerRef.current.getDuration();
 
-    if (resumeSeconds < 5) {
-      return;
-    }
-
-    const resumeId = window.setTimeout(() => {
-      sendPlayerCommand("seekTo", [resumeSeconds, true]);
-    }, 800);
-
-    return () => {
-      window.clearTimeout(resumeId);
+    latestProgressRef.current = {
+      progressSeconds: Number.isFinite(progressSeconds) ? progressSeconds : 0,
+      durationSeconds: Number.isFinite(durationSeconds) ? durationSeconds : 0,
     };
-  }, [currentProgress?.completed, currentProgress?.progressSeconds, currentVideo?.id]);
-
-  function sendPlayerCommand(
-    command:
-      | "playVideo"
-      | "pauseVideo"
-      | "seekTo"
-      | "getCurrentTime"
-      | "getDuration",
-    args: unknown[] = [],
-  ) {
-    playerRef.current?.contentWindow?.postMessage(
-      JSON.stringify({
-        event: "command",
-        func: command,
-        args,
-      }),
-      "*",
-    );
-  }
-
-  function safeParsePlayerEvent(data: string) {
-    try {
-      return JSON.parse(data) as {
-        info?: {
-          currentTime?: number;
-          duration?: number;
-          playerState?: number;
-        };
-        playerState?: number;
-      };
-    } catch {
-      return null;
-    }
   }
 
   function clearControlsTimer() {
@@ -301,43 +345,32 @@ export default function KidsPage() {
     }
 
     const nextIsPlaying = !isPlaying;
-    sendPlayerCommand(nextIsPlaying ? "playVideo" : "pauseVideo");
-    if (!nextIsPlaying) {
+
+    if (nextIsPlaying) {
+      ytPlayerRef.current?.playVideo();
+    } else {
+      syncLatestProgress();
       saveCurrentProgress({ immediate: true });
+      ytPlayerRef.current?.pauseVideo();
     }
+
     setIsPlaying(nextIsPlaying);
     revealControls(nextIsPlaying);
-  }
-
-  function chooseVideo(nextIndex: number, autoPlay = false) {
-    const videoCount = control.approvedVideos.length;
-
-    if (!videoCount || isLocked) {
-      return;
-    }
-
-    const normalizedIndex = (nextIndex + videoCount) % videoCount;
-    const nextVideo = control.approvedVideos[normalizedIndex];
-
-    autoAdvanceRef.current = autoPlay;
-    revealControls();
-    updateControl({ currentVideoId: nextVideo.id });
-  }
-
-  function playNextVideo() {
-    if (control.status !== "allowed" || !currentVideo) {
-      setIsPlaying(false);
-      revealControls();
-      return;
-    }
-
-    saveCurrentProgress({ completed: true, immediate: true });
   }
 
   function shouldMarkComplete() {
     const { durationSeconds, progressSeconds } = latestProgressRef.current;
 
     return durationSeconds > 0 && progressSeconds >= durationSeconds * 0.9;
+  }
+
+  function markCurrentVideoCompleted() {
+    if (!currentVideo) {
+      return;
+    }
+
+    syncLatestProgress();
+    saveCurrentProgress({ completed: true, immediate: true });
   }
 
   async function saveCurrentProgress({
@@ -371,7 +404,7 @@ export default function KidsPage() {
 
     if (response.ok) {
       const nextControl = (await response.json()) as PlayerControl;
-      autoAdvanceRef.current =
+      autoPlayAfterLoadRef.current =
         completed && nextControl.currentVideoId !== currentVideo.id;
       setControl(nextControl);
     }
@@ -422,18 +455,7 @@ export default function KidsPage() {
           <div className="player-frame" onClick={handlePlayerFrameClick}>
             {currentVideo && !isLocked ? (
               <>
-                <iframe
-                  ref={playerRef}
-                  title={currentVideo.title}
-                  src={`https://www.youtube-nocookie.com/embed/${currentVideo.id}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=0&disablekb=1&iv_load_policy=3&controls=0`}
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                  onLoad={() => {
-                    sendPlayerCommand("getCurrentTime");
-                    sendPlayerCommand("getDuration");
-                  }}
-                />
+                <div className="youtube-player-slot" ref={playerContainerRef} />
                 {control.status === "paused" ? (
                   <div className="lock-screen pause-screen">
                     <strong>暫停中</strong>
