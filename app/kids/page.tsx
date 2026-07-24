@@ -69,9 +69,10 @@ export default function KidsPage() {
             ) : (
               <iframe
                 title={currentVideo.title}
-                src={`https://www.youtube.com/embed/${currentVideo.id}?rel=0&modestbranding=1`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
+                src={`https://www.youtube-nocookie.com/embed/${currentVideo.id}?rel=0&modestbranding=1&playsinline=1&fs=0&disablekb=1&iv_load_policy=3`}
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                referrerPolicy="strict-origin-when-cross-origin"
+                sandbox="allow-scripts allow-same-origin allow-presentation"
               />
             )
           ) : (

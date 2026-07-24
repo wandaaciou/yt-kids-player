@@ -29,6 +29,9 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(parentPage, /家長手機/);
   assert.match(parentPage, /已核准 \{control\.approvedVideos\.length\}\/3/);
   assert.match(kidsPage, /酸菜觀看頁/);
+  assert.match(kidsPage, /youtube-nocookie\.com/);
+  assert.match(kidsPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/);
+  assert.match(kidsPage, /fs=0/);
   assert.doesNotMatch(kidsPage, /YouTube 搜尋審核/);
   assert.match(gitignore, /^\.env\*$/m);
   assert.match(gitignore, /^!\.env\.example$/m);
