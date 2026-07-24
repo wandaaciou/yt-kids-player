@@ -522,6 +522,8 @@ h3 {
   width: 100%;
   height: 100%;
   border: 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 .lock-screen {
@@ -550,6 +552,22 @@ h3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   padding: 14px;
+}
+
+.kid-big-controls {
+  display: flex;
+  justify-content: center;
+  padding: 16px 14px 4px;
+}
+
+.kid-big-controls button {
+  width: min(100%, 420px);
+  min-height: 74px;
+  border-radius: 999px;
+  background: var(--youtube-red);
+  color: white;
+  font-size: 1.35rem;
+  font-weight: 900;
 }
 
 .kid-video-strip button {

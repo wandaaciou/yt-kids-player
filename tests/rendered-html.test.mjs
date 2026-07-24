@@ -15,6 +15,10 @@ test("product source keeps parent approval and child playback separated", async 
     new URL("../app/kids/page.tsx", import.meta.url),
     "utf8",
   );
+  const globalStyles = await readFile(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
   const gitignore = await readFile(
     new URL("../.gitignore", import.meta.url),
     "utf8",
@@ -31,6 +35,10 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(kidsPage, /酸菜觀看頁/);
   assert.match(kidsPage, /youtube-nocookie\.com/);
   assert.match(kidsPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/);
+  assert.match(kidsPage, /enablejsapi=1/);
+  assert.match(kidsPage, /controls=0/);
+  assert.match(kidsPage, /播放影片/);
+  assert.match(globalStyles, /pointer-events:\s*none/);
   assert.match(kidsPage, /fs=0/);
   assert.doesNotMatch(kidsPage, /YouTube 搜尋審核/);
   assert.match(gitignore, /^\.env\*$/m);

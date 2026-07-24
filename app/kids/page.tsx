@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   controlStorageKey,
   defaultControl,
@@ -11,6 +11,8 @@ import {
 
 export default function KidsPage() {
   const [control, setControl] = useState<PlayerControl>(defaultControl);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playerRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     function readControl() {
@@ -34,6 +36,32 @@ export default function KidsPage() {
     control.approvedVideos.find((video) => video.id === control.currentVideoId) ??
     control.approvedVideos[0];
   const isLocked = control.status === "locked";
+  const canPlay = currentVideo && control.status === "allowed" && !isLocked;
+
+  useEffect(() => {
+    setIsPlaying(false);
+  }, [control.currentVideoId, control.status]);
+
+  function sendPlayerCommand(command: "playVideo" | "pauseVideo") {
+    playerRef.current?.contentWindow?.postMessage(
+      JSON.stringify({
+        event: "command",
+        func: command,
+        args: [],
+      }),
+      "*",
+    );
+  }
+
+  function togglePlayback() {
+    if (!canPlay) {
+      return;
+    }
+
+    const nextIsPlaying = !isPlaying;
+    sendPlayerCommand(nextIsPlaying ? "playVideo" : "pauseVideo");
+    setIsPlaying(nextIsPlaying);
+  }
 
   return (
     <main className="app-shell kids-shell">
@@ -68,8 +96,9 @@ export default function KidsPage() {
               </div>
             ) : (
               <iframe
+                ref={playerRef}
                 title={currentVideo.title}
-                src={`https://www.youtube-nocookie.com/embed/${currentVideo.id}?rel=0&modestbranding=1&playsinline=1&fs=0&disablekb=1&iv_load_policy=3`}
+                src={`https://www.youtube-nocookie.com/embed/${currentVideo.id}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=0&disablekb=1&iv_load_policy=3&controls=0`}
                 allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
                 referrerPolicy="strict-origin-when-cross-origin"
                 sandbox="allow-scripts allow-same-origin allow-presentation"
@@ -81,6 +110,12 @@ export default function KidsPage() {
               <span>明天再一起選影片</span>
             </div>
           )}
+        </div>
+
+        <div className="kid-big-controls" aria-label="酸菜播放控制">
+          <button type="button" disabled={!canPlay} onClick={togglePlayback}>
+            {isPlaying ? "暫停影片" : "播放影片"}
+          </button>
         </div>
 
         <div className="kid-video-strip">
