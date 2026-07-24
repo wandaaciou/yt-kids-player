@@ -41,6 +41,9 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(youtubeSearchRoute, /videoEmbeddable/);
   assert.match(youtubeSearchRoute, /safeSearch/);
   assert.match(kidsPage, /酸菜觀看頁/);
+  assert.doesNotMatch(kidsPage, /href="\/parent"/);
+  assert.doesNotMatch(kidsPage, /家長設定/);
+  assert.doesNotMatch(kidsPage, /topbar-search/);
   assert.match(kidsPage, /youtube-nocookie\.com/);
   assert.match(kidsPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/);
   assert.match(kidsPage, /enablejsapi=1/);

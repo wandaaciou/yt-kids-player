@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   controlStorageKey,
@@ -119,19 +118,6 @@ export default function KidsPage() {
 
   return (
     <main className="app-shell kids-shell">
-      <nav className="topbar" aria-label="主導覽">
-        <div className="brand-mark">
-          <span className="play-badge" aria-hidden="true" />
-          <strong>Sauncai Kids</strong>
-        </div>
-        <div className="topbar-search" aria-hidden="true">
-          <span>酸菜觀看頁</span>
-        </div>
-        <Link className="nav-link-button" href="/parent">
-          家長設定
-        </Link>
-      </nav>
-
       <section className="kid-panel solo-kid-panel" ref={playerShellRef}>
         <div className="kid-player-header">
           <div>

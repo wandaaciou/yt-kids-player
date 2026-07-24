@@ -297,23 +297,8 @@ h3 {
 }
 
 .kids-shell {
-  padding-bottom: 18px;
+  padding: 14px;
   background: #0f0f0f;
-}
-
-.kids-shell .topbar {
-  border-bottom-color: #272727;
-  background: rgba(15, 15, 15, 0.96);
-}
-
-.kids-shell .brand-mark strong {
-  color: white;
-}
-
-.kids-shell .topbar-search {
-  border-color: #333333;
-  background: #1f1f1f;
-  color: #d6d6d6;
 }
 
 .solo-kid-panel {
