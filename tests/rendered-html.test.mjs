@@ -67,8 +67,11 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(kidsPage, /enablejsapi=1/);
   assert.match(kidsPage, /controls=0/);
   assert.match(kidsPage, /播放影片/);
-  assert.match(kidsPage, /上一支/);
-  assert.match(kidsPage, /下一支/);
+  assert.doesNotMatch(kidsPage, /上一支/);
+  assert.doesNotMatch(kidsPage, /下一支/);
+  assert.match(kidsPage, /handlePlayerMessage/);
+  assert.match(kidsPage, /playerState === 0/);
+  assert.match(kidsPage, /controls-hidden/);
   assert.match(kidsPage, /kid-player-stage/);
   assert.match(kidsPage, /requestFullscreen/);
   assert.match(kidsPage, /全螢幕/);

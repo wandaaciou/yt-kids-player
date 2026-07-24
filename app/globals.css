@@ -310,7 +310,7 @@ h3 {
 
 .solo-kid-panel:fullscreen {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
   width: 100vw;
   height: 100vh;
   max-width: none;
@@ -325,6 +325,10 @@ h3 {
 
 .solo-kid-panel:fullscreen .kid-player-stage {
   min-height: 0;
+}
+
+.solo-kid-panel:fullscreen .kid-video-strip {
+  display: none;
 }
 
 .panel-header,
@@ -697,11 +701,22 @@ h3 {
   bottom: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: 112px minmax(154px, 220px) 112px;
+  grid-template-columns: minmax(154px, 220px);
   justify-content: center;
-  gap: 10px;
   padding: 56px 18px 16px;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0));
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.kid-big-controls.controls-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px);
 }
 
 .kid-big-controls button {
@@ -814,8 +829,7 @@ h3 {
   }
 
   .kid-big-controls {
-    grid-template-columns: 86px minmax(136px, 1fr) 86px;
-    gap: 8px;
+    grid-template-columns: minmax(136px, 220px);
     padding: 48px 12px 12px;
   }
 

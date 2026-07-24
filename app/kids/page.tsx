@@ -11,9 +11,12 @@ export default function KidsPage() {
   const [control, setControl] = useState<PlayerControl>(defaultControl);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const playerRef = useRef<HTMLIFrameElement>(null);
   const playerShellRef = useRef<HTMLElement>(null);
   const previousStatusRef = useRef(control.status);
+  const controlsTimerRef = useRef<number | null>(null);
+  const autoAdvanceRef = useRef(false);
 
   useEffect(() => {
     readControl();
@@ -50,11 +53,40 @@ export default function KidsPage() {
   );
   const isLocked = control.status === "locked";
   const canPlay = currentVideo && control.status === "allowed" && !isLocked;
-  const hasMultipleVideos = control.approvedVideos.length > 1;
 
   useEffect(() => {
-    setIsPlaying(false);
+    if (!autoAdvanceRef.current) {
+      setIsPlaying(false);
+      revealControls();
+      return;
+    }
+
+    autoAdvanceRef.current = false;
+    const playNextId = window.setTimeout(() => {
+      sendPlayerCommand("playVideo");
+      setIsPlaying(true);
+      revealControls(true);
+    }, 650);
+
+    return () => {
+      window.clearTimeout(playNextId);
+    };
   }, [control.currentVideoId]);
+
+  useEffect(() => {
+    if (isPlaying && control.status === "allowed") {
+      revealControls(true);
+      return;
+    }
+
+    revealControls();
+  }, [isPlaying, control.status]);
+
+  useEffect(() => {
+    return () => {
+      clearControlsTimer();
+    };
+  }, []);
 
   useEffect(() => {
     const previousStatus = previousStatusRef.current;
@@ -63,6 +95,7 @@ export default function KidsPage() {
     if (!currentVideo || isLocked || control.status === "paused") {
       sendPlayerCommand("pauseVideo");
       setIsPlaying(false);
+      revealControls();
       return;
     }
 
@@ -73,6 +106,7 @@ export default function KidsPage() {
       const fallbackResumeId = window.setTimeout(() => {
         sendPlayerCommand("playVideo");
         setIsPlaying(true);
+        revealControls(true);
       }, 650);
 
       return () => {
@@ -94,6 +128,31 @@ export default function KidsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    function handlePlayerMessage(event: MessageEvent) {
+      if (
+        typeof event.origin !== "string" ||
+        !event.origin.includes("youtube-nocookie.com")
+      ) {
+        return;
+      }
+
+      const data =
+        typeof event.data === "string" ? safeParsePlayerEvent(event.data) : event.data;
+      const playerState = data?.info?.playerState ?? data?.playerState;
+
+      if (playerState === 0) {
+        playNextVideo();
+      }
+    }
+
+    window.addEventListener("message", handlePlayerMessage);
+
+    return () => {
+      window.removeEventListener("message", handlePlayerMessage);
+    };
+  });
+
   function sendPlayerCommand(command: "playVideo" | "pauseVideo") {
     playerRef.current?.contentWindow?.postMessage(
       JSON.stringify({
@@ -105,6 +164,40 @@ export default function KidsPage() {
     );
   }
 
+  function safeParsePlayerEvent(data: string) {
+    try {
+      return JSON.parse(data) as {
+        info?: { playerState?: number };
+        playerState?: number;
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function clearControlsTimer() {
+    if (controlsTimerRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(controlsTimerRef.current);
+    controlsTimerRef.current = null;
+  }
+
+  function revealControls(autoHide = false) {
+    clearControlsTimer();
+    setControlsVisible(true);
+
+    if (!autoHide) {
+      return;
+    }
+
+    controlsTimerRef.current = window.setTimeout(() => {
+      setControlsVisible(false);
+      controlsTimerRef.current = null;
+    }, 5000);
+  }
+
   function togglePlayback() {
     if (!canPlay) {
       return;
@@ -113,9 +206,10 @@ export default function KidsPage() {
     const nextIsPlaying = !isPlaying;
     sendPlayerCommand(nextIsPlaying ? "playVideo" : "pauseVideo");
     setIsPlaying(nextIsPlaying);
+    revealControls(nextIsPlaying);
   }
 
-  function chooseVideo(nextIndex: number) {
+  function chooseVideo(nextIndex: number, autoPlay = false) {
     const videoCount = control.approvedVideos.length;
 
     if (!videoCount || isLocked) {
@@ -125,7 +219,19 @@ export default function KidsPage() {
     const normalizedIndex = (nextIndex + videoCount) % videoCount;
     const nextVideo = control.approvedVideos[normalizedIndex];
 
+    autoAdvanceRef.current = autoPlay;
+    revealControls();
     updateControl({ currentVideoId: nextVideo.id });
+  }
+
+  function playNextVideo() {
+    if (control.approvedVideos.length < 2 || control.status !== "allowed") {
+      setIsPlaying(false);
+      revealControls();
+      return;
+    }
+
+    chooseVideo(currentVideoIndex + 1, true);
   }
 
   async function updateControl(input: { currentVideoId: string }) {
@@ -153,6 +259,12 @@ export default function KidsPage() {
     await playerShellRef.current.requestFullscreen();
   }
 
+  function handlePlayerFrameClick() {
+    if (isPlaying && !controlsVisible) {
+      revealControls(true);
+    }
+  }
+
   return (
     <main className="app-shell kids-shell">
       <section className="kid-panel solo-kid-panel" ref={playerShellRef}>
@@ -171,7 +283,7 @@ export default function KidsPage() {
             </div>
           </div>
 
-          <div className="player-frame">
+          <div className="player-frame" onClick={handlePlayerFrameClick}>
             {currentVideo && !isLocked ? (
               <>
                 <iframe
@@ -197,15 +309,14 @@ export default function KidsPage() {
             )}
           </div>
 
-          <div className="kid-big-controls" aria-label="酸菜播放控制">
-            <button
-              className="secondary-kid-control"
-              type="button"
-              disabled={!hasMultipleVideos || isLocked}
-              onClick={() => chooseVideo(currentVideoIndex - 1)}
-            >
-              上一支
-            </button>
+          <div
+            className={
+              controlsVisible
+                ? "kid-big-controls"
+                : "kid-big-controls controls-hidden"
+            }
+            aria-label="酸菜播放控制"
+          >
             <button
               className="primary-kid-control"
               type="button"
@@ -213,14 +324,6 @@ export default function KidsPage() {
               onClick={togglePlayback}
             >
               {isPlaying ? "暫停影片" : "播放影片"}
-            </button>
-            <button
-              className="secondary-kid-control"
-              type="button"
-              disabled={!hasMultipleVideos || isLocked}
-              onClick={() => chooseVideo(currentVideoIndex + 1)}
-            >
-              下一支
             </button>
           </div>
         </div>
