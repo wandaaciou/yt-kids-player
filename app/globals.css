@@ -344,6 +344,16 @@ h3 {
   color: var(--ink);
 }
 
+.search-status {
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--control-gray);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .search-row {
   display: grid;
   gap: 8px;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   controlStorageKey,
   defaultControl,
@@ -17,6 +17,8 @@ export default function ParentPage() {
   const [maxMinutes, setMaxMinutes] = useState(30);
   const [trustedOnly, setTrustedOnly] = useState(true);
   const [control, setControl] = useState<PlayerControl>(defaultControl);
+  const [searchVideos, setSearchVideos] = useState<Video[]>(searchResults);
+  const [searchStatus, setSearchStatus] = useState("目前使用測試資料");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -37,19 +39,66 @@ export default function ParentPage() {
     window.localStorage.setItem(controlStorageKey, JSON.stringify(control));
   }, [control, ready]);
 
-  const filteredResults = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase();
+  useEffect(() => {
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      const normalizedKeyword = keyword.trim();
 
-    return searchResults.filter((video) => {
-      const matchesKeyword =
-        !normalizedKeyword ||
-        video.title.toLowerCase().includes(normalizedKeyword);
-      const matchesDuration = video.durationMinutes <= maxMinutes;
-      const matchesTrust = !trustedOnly || video.channel.includes("官方");
+      if (!normalizedKeyword) {
+        setSearchVideos([]);
+        setSearchStatus("請輸入關鍵字");
+        return;
+      }
 
-      return matchesKeyword && matchesDuration && matchesTrust;
-    });
+      setSearchStatus("搜尋 YouTube 中");
+
+      try {
+        const params = new URLSearchParams({
+          q: normalizedKeyword,
+          maxMinutes: String(maxMinutes),
+          trustedOnly: String(trustedOnly),
+        });
+        const response = await fetch(`/api/youtube/search?${params}`, {
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error("YouTube search failed");
+        }
+
+        const data = (await response.json()) as { videos: Video[] };
+        setSearchVideos(data.videos);
+        setSearchStatus(
+          data.videos.length ? "使用真 YouTube 搜尋結果" : "沒有找到符合條件的影片",
+        );
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const normalizedKeyword = keyword.trim().toLowerCase();
+        const fallbackVideos = searchResults.filter((video) => {
+          const matchesKeyword =
+            !normalizedKeyword ||
+            video.title.toLowerCase().includes(normalizedKeyword);
+          const matchesDuration = video.durationMinutes <= maxMinutes;
+          const matchesTrust = !trustedOnly || video.channel.includes("官方");
+
+          return matchesKeyword && matchesDuration && matchesTrust;
+        });
+
+        setSearchVideos(fallbackVideos);
+        setSearchStatus("尚未設定 YouTube API key，暫用測試資料");
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
   }, [keyword, maxMinutes, trustedOnly]);
+
+  const filteredResults = searchVideos;
 
   const canAddMore = control.approvedVideos.length < 3;
 
@@ -126,9 +175,7 @@ export default function ParentPage() {
               <p className="eyebrow">家長手機</p>
               <h2>YouTube 搜尋審核</h2>
             </div>
-            <button className="ghost-button" type="button">
-              登入家長帳號
-            </button>
+            <span className="search-status">{searchStatus}</span>
           </div>
 
           <div className="search-row">

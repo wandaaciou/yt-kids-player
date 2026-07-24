@@ -15,6 +15,10 @@ test("product source keeps parent approval and child playback separated", async 
     new URL("../app/kids/page.tsx", import.meta.url),
     "utf8",
   );
+  const youtubeSearchRoute = await readFile(
+    new URL("../app/api/youtube/search/route.ts", import.meta.url),
+    "utf8",
+  );
   const globalStyles = await readFile(
     new URL("../app/globals.css", import.meta.url),
     "utf8",
@@ -31,7 +35,11 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(homePage, /href="\/parent"/);
   assert.match(homePage, /href="\/kids"/);
   assert.match(parentPage, /家長手機/);
+  assert.match(parentPage, /\/api\/youtube\/search/);
   assert.match(parentPage, /已核准 \{control\.approvedVideos\.length\}\/3/);
+  assert.match(youtubeSearchRoute, /process\.env\.YOUTUBE_API_KEY/);
+  assert.match(youtubeSearchRoute, /videoEmbeddable/);
+  assert.match(youtubeSearchRoute, /safeSearch/);
   assert.match(kidsPage, /酸菜觀看頁/);
   assert.match(kidsPage, /youtube-nocookie\.com/);
   assert.match(kidsPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/);

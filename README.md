@@ -17,3 +17,13 @@ npm install
 npm run dev
 npm run build
 ```
+
+## 測試真 YouTube 搜尋
+
+在本機建立 `.env.local`，填入 Google Cloud 的 YouTube Data API key：
+
+```bash
+YOUTUBE_API_KEY=
+```
+
+重新啟動本機網站後，家長頁 `/parent` 會用真 YouTube 搜尋。若沒有設定金鑰，頁面會退回測試資料。
