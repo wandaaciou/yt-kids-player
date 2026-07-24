@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  controlStorageKey,
   defaultControl,
   PlayerControl,
   statusLabel,
@@ -16,22 +15,30 @@ export default function KidsPage() {
   const playerShellRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    function readControl() {
-      const stored = window.localStorage.getItem(controlStorageKey);
-      setControl(stored ? (JSON.parse(stored) as PlayerControl) : defaultControl);
-    }
-
     readControl();
 
     const intervalId = window.setInterval(readControl, 1000);
 
-    window.addEventListener("storage", readControl);
-
     return () => {
       window.clearInterval(intervalId);
-      window.removeEventListener("storage", readControl);
     };
   }, []);
+
+  async function readControl() {
+    try {
+      const response = await fetch("/api/family/state", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Cloud state failed");
+      }
+
+      setControl((await response.json()) as PlayerControl);
+    } catch {
+      setControl(defaultControl);
+    }
+  }
 
   const currentVideo =
     control.approvedVideos.find((video) => video.id === control.currentVideoId) ??
@@ -91,16 +98,19 @@ export default function KidsPage() {
     const normalizedIndex = (nextIndex + videoCount) % videoCount;
     const nextVideo = control.approvedVideos[normalizedIndex];
 
-    setControl((current) => {
-      const nextControl = {
-        ...current,
-        currentVideoId: nextVideo.id,
-      };
+    updateControl({ currentVideoId: nextVideo.id });
+  }
 
-      window.localStorage.setItem(controlStorageKey, JSON.stringify(nextControl));
-
-      return nextControl;
+  async function updateControl(input: { currentVideoId: string }) {
+    const response = await fetch("/api/family/state", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
     });
+
+    if (response.ok) {
+      setControl((await response.json()) as PlayerControl);
+    }
   }
 
   async function toggleFullscreen() {
@@ -194,21 +204,7 @@ export default function KidsPage() {
               key={video.id}
               type="button"
               disabled={isLocked}
-              onClick={() =>
-                setControl((current) => {
-                  const nextControl = {
-                    ...current,
-                    currentVideoId: video.id,
-                  };
-
-                  window.localStorage.setItem(
-                    controlStorageKey,
-                    JSON.stringify(nextControl),
-                  );
-
-                  return nextControl;
-                })
-              }
+              onClick={() => updateControl({ currentVideoId: video.id })}
             >
               <img src={video.thumbnail} alt="" />
               <span>{video.title}</span>

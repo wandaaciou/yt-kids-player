@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  controlStorageKey,
   defaultControl,
   PlayerControl,
   PlayerStatus,
@@ -19,25 +18,11 @@ export default function ParentPage() {
   const [control, setControl] = useState<PlayerControl>(defaultControl);
   const [searchVideos, setSearchVideos] = useState<Video[]>(searchResults);
   const [searchStatus, setSearchStatus] = useState("目前使用測試資料");
-  const [ready, setReady] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState("連線雲端中");
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(controlStorageKey);
-
-    if (stored) {
-      setControl(JSON.parse(stored) as PlayerControl);
-    }
-
-    setReady(true);
+    loadControl();
   }, []);
-
-  useEffect(() => {
-    if (!ready) {
-      return;
-    }
-
-    window.localStorage.setItem(controlStorageKey, JSON.stringify(control));
-  }, [control, ready]);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -102,7 +87,22 @@ export default function ParentPage() {
 
   const canAddMore = control.approvedVideos.length < 3;
 
-  function approveVideo(video: Video) {
+  async function loadControl() {
+    try {
+      const response = await fetch("/api/family/state");
+
+      if (!response.ok) {
+        throw new Error("Cloud state failed");
+      }
+
+      setControl((await response.json()) as PlayerControl);
+      setCloudStatus("雲端同步中");
+    } catch {
+      setCloudStatus("尚未建立 Supabase 資料表");
+    }
+  }
+
+  async function approveVideo(video: Video) {
     const alreadyApproved = control.approvedVideos.some(
       (item) => item.id === video.id,
     );
@@ -111,34 +111,53 @@ export default function ParentPage() {
       return;
     }
 
-    setControl((current) => ({
-      ...current,
-      approvedVideos: [...current.approvedVideos, video],
-      currentVideoId: video.id,
-      status: "allowed",
-    }));
-  }
-
-  function removeVideo(videoId: string) {
-    setControl((current) => {
-      const nextVideos = current.approvedVideos.filter(
-        (video) => video.id !== videoId,
-      );
-      const nextCurrentVideoId =
-        current.currentVideoId === videoId
-          ? nextVideos[0]?.id ?? ""
-          : current.currentVideoId;
-
-      return {
-        ...current,
-        approvedVideos: nextVideos,
-        currentVideoId: nextCurrentVideoId,
-      };
+    const response = await fetch("/api/family/videos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(video),
     });
+
+    if (response.ok) {
+      setControl((await response.json()) as PlayerControl);
+      setCloudStatus("雲端同步中");
+    } else {
+      setCloudStatus("雲端寫入失敗");
+    }
   }
 
-  function setStatus(status: PlayerStatus) {
-    setControl((current) => ({ ...current, status }));
+  async function removeVideo(videoId: string) {
+    const response = await fetch(
+      `/api/family/videos?id=${encodeURIComponent(videoId)}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    if (response.ok) {
+      setControl((await response.json()) as PlayerControl);
+      setCloudStatus("雲端同步中");
+    } else {
+      setCloudStatus("雲端移除失敗");
+    }
+  }
+
+  async function updateControl(input: {
+    status?: PlayerStatus;
+    currentVideoId?: string;
+    timer?: number;
+  }) {
+    const response = await fetch("/api/family/state", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+
+    if (response.ok) {
+      setControl((await response.json()) as PlayerControl);
+      setCloudStatus("雲端同步中");
+    } else {
+      setCloudStatus("雲端更新失敗");
+    }
   }
 
   return (
@@ -165,6 +184,7 @@ export default function ParentPage() {
           <span>已核准 {control.approvedVideos.length}/3</span>
           <span>{statusLabel(control.status)}</span>
           <span>倒數 {control.timer} 分鐘</span>
+          <span>{cloudStatus}</span>
         </div>
       </section>
 
@@ -245,16 +265,16 @@ export default function ParentPage() {
           </div>
 
           <div className="button-grid">
-            <button type="button" onClick={() => setStatus("allowed")}>
+            <button type="button" onClick={() => updateControl({ status: "allowed" })}>
               繼續
             </button>
-            <button type="button" onClick={() => setStatus("paused")}>
+            <button type="button" onClick={() => updateControl({ status: "paused" })}>
               暫停
             </button>
             <button
               className="danger-button"
               type="button"
-              onClick={() => setStatus("locked")}
+              onClick={() => updateControl({ status: "locked" })}
             >
               今天結束
             </button>
@@ -269,10 +289,7 @@ export default function ParentPage() {
               step="5"
               value={control.timer}
               onChange={(event) =>
-                setControl((current) => ({
-                  ...current,
-                  timer: Number(event.target.value),
-                }))
+                updateControl({ timer: Number(event.target.value) })
               }
             />
             <strong>{control.timer}</strong>
@@ -290,12 +307,7 @@ export default function ParentPage() {
               >
                 <button
                   type="button"
-                  onClick={() =>
-                    setControl((current) => ({
-                      ...current,
-                      currentVideoId: video.id,
-                    }))
-                  }
+                  onClick={() => updateControl({ currentVideoId: video.id })}
                 >
                   {video.title}
                 </button>

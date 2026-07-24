@@ -14,6 +14,8 @@ export type PlayerControl = {
   currentVideoId: string;
   status: PlayerStatus;
   timer: number;
+  stopAt?: string | null;
+  lockedUntil?: string | null;
 };
 
 export const searchResults: Video[] = [

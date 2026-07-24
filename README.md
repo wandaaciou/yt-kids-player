@@ -27,3 +27,7 @@ YOUTUBE_API_KEY=
 ```
 
 重新啟動本機網站後，家長頁 `/parent` 會用真 YouTube 搜尋。若沒有設定金鑰，頁面會退回測試資料。
+
+## Supabase 雲端同步
+
+在 Supabase SQL editor 執行 `supabase/schema.sql`，建立核准影片和播放狀態資料表。完成後，家長頁會把核准影片、暫停、今天結束和倒數設定寫入雲端；酸菜頁會每秒讀取同一份雲端狀態。

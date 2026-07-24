@@ -19,6 +19,14 @@ test("product source keeps parent approval and child playback separated", async 
     new URL("../app/api/youtube/search/route.ts", import.meta.url),
     "utf8",
   );
+  const familyStateRoute = await readFile(
+    new URL("../app/api/family/state/route.ts", import.meta.url),
+    "utf8",
+  );
+  const familySupabase = await readFile(
+    new URL("../app/api/family/supabase.ts", import.meta.url),
+    "utf8",
+  );
   const globalStyles = await readFile(
     new URL("../app/globals.css", import.meta.url),
     "utf8",
@@ -36,11 +44,19 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(homePage, /href="\/kids"/);
   assert.match(parentPage, /家長手機/);
   assert.match(parentPage, /\/api\/youtube\/search/);
+  assert.match(parentPage, /\/api\/family\/state/);
+  assert.match(parentPage, /\/api\/family\/videos/);
   assert.match(parentPage, /已核准 \{control\.approvedVideos\.length\}\/3/);
+  assert.match(familyStateRoute, /patchPlayerControl/);
+  assert.match(familySupabase, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(familySupabase, /stop_at/);
+  assert.doesNotMatch(parentPage, /localStorage/);
   assert.match(youtubeSearchRoute, /process\.env\.YOUTUBE_API_KEY/);
   assert.match(youtubeSearchRoute, /videoEmbeddable/);
   assert.match(youtubeSearchRoute, /safeSearch/);
   assert.match(kidsPage, /酸菜觀看頁/);
+  assert.match(kidsPage, /\/api\/family\/state/);
+  assert.doesNotMatch(kidsPage, /localStorage/);
   assert.doesNotMatch(kidsPage, /href="\/parent"/);
   assert.doesNotMatch(kidsPage, /家長設定/);
   assert.doesNotMatch(kidsPage, /topbar-search/);
