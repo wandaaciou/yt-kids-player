@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   defaultControl,
-  PlayerControl,
-  statusLabel,
+  type PlayerControl,
 } from "../demo-state";
 
 export default function KidsPage() {
@@ -274,13 +273,6 @@ export default function KidsPage() {
               <p className="eyebrow">酸菜觀看頁</p>
               <h1>{currentVideo?.title ?? "今天沒有影片"}</h1>
             </div>
-            <div className="kid-time-pill">
-              <span>{statusLabel(control.status)}</span>
-              <strong>剩 {control.timer} 分鐘</strong>
-              <button type="button" onClick={toggleFullscreen}>
-                {isFullscreen ? "離開全螢幕" : "全螢幕"}
-              </button>
-            </div>
           </div>
 
           <div className="player-frame" onClick={handlePlayerFrameClick}>
@@ -324,6 +316,17 @@ export default function KidsPage() {
               onClick={togglePlayback}
             >
               {isPlaying ? "暫停影片" : "播放影片"}
+            </button>
+            <button
+              className="icon-kid-control"
+              type="button"
+              aria-label={isFullscreen ? "離開全螢幕" : "全螢幕"}
+              title={isFullscreen ? "離開全螢幕" : "全螢幕"}
+              onClick={toggleFullscreen}
+            >
+              <span className="material-symbols-rounded" aria-hidden="true">
+                {isFullscreen ? "fullscreen_exit" : "fullscreen"}
+              </span>
             </button>
           </div>
         </div>

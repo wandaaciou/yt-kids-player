@@ -15,6 +15,10 @@ test("product source keeps parent approval and child playback separated", async 
     new URL("../app/kids/page.tsx", import.meta.url),
     "utf8",
   );
+  const layoutPage = await readFile(
+    new URL("../app/layout.tsx", import.meta.url),
+    "utf8",
+  );
   const youtubeSearchRoute = await readFile(
     new URL("../app/api/youtube/search/route.ts", import.meta.url),
     "utf8",
@@ -75,6 +79,9 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(kidsPage, /kid-player-stage/);
   assert.match(kidsPage, /requestFullscreen/);
   assert.match(kidsPage, /全螢幕/);
+  assert.match(kidsPage, /material-symbols-rounded/);
+  assert.match(kidsPage, /fullscreen_exit/);
+  assert.match(layoutPage, /Material\+Symbols\+Rounded/);
   assert.match(globalStyles, /pointer-events:\s*none/);
   assert.match(globalStyles, /:fullscreen/);
   assert.match(globalStyles, /primary-kid-control/);
