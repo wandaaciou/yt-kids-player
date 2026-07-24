@@ -119,70 +119,72 @@ export default function KidsPage() {
   return (
     <main className="app-shell kids-shell">
       <section className="kid-panel solo-kid-panel" ref={playerShellRef}>
-        <div className="kid-player-header">
-          <div>
-            <p className="eyebrow">酸菜觀看頁</p>
-            <h1>{currentVideo?.title ?? "今天沒有影片"}</h1>
+        <div className="kid-player-stage">
+          <div className="kid-player-header">
+            <div>
+              <p className="eyebrow">酸菜觀看頁</p>
+              <h1>{currentVideo?.title ?? "今天沒有影片"}</h1>
+            </div>
+            <div className="kid-time-pill">
+              <span>{statusLabel(control.status)}</span>
+              <strong>剩 {control.timer} 分鐘</strong>
+              <button type="button" onClick={toggleFullscreen}>
+                {isFullscreen ? "離開全螢幕" : "全螢幕"}
+              </button>
+            </div>
           </div>
-          <div className="kid-time-pill">
-            <span>{statusLabel(control.status)}</span>
-            <strong>剩 {control.timer} 分鐘</strong>
-            <button type="button" onClick={toggleFullscreen}>
-              {isFullscreen ? "離開全螢幕" : "全螢幕"}
+
+          <div className="player-frame">
+            {currentVideo && !isLocked ? (
+              control.status === "paused" ? (
+                <div className="lock-screen">
+                  <strong>暫停中</strong>
+                  <span>等媽媽說可以再繼續</span>
+                </div>
+              ) : (
+                <iframe
+                  ref={playerRef}
+                  title={currentVideo.title}
+                  src={`https://www.youtube-nocookie.com/embed/${currentVideo.id}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=0&disablekb=1&iv_load_policy=3&controls=0`}
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  sandbox="allow-scripts allow-same-origin allow-presentation"
+                />
+              )
+            ) : (
+              <div className="lock-screen">
+                <strong>今天先休息</strong>
+                <span>明天再一起選影片</span>
+              </div>
+            )}
+          </div>
+
+          <div className="kid-big-controls" aria-label="酸菜播放控制">
+            <button
+              className="secondary-kid-control"
+              type="button"
+              disabled={!hasMultipleVideos || isLocked}
+              onClick={() => chooseVideo(currentVideoIndex - 1)}
+            >
+              上一支
+            </button>
+            <button
+              className="primary-kid-control"
+              type="button"
+              disabled={!canPlay}
+              onClick={togglePlayback}
+            >
+              {isPlaying ? "暫停影片" : "播放影片"}
+            </button>
+            <button
+              className="secondary-kid-control"
+              type="button"
+              disabled={!hasMultipleVideos || isLocked}
+              onClick={() => chooseVideo(currentVideoIndex + 1)}
+            >
+              下一支
             </button>
           </div>
-        </div>
-
-        <div className="player-frame">
-          {currentVideo && !isLocked ? (
-            control.status === "paused" ? (
-              <div className="lock-screen">
-                <strong>暫停中</strong>
-                <span>等媽媽說可以再繼續</span>
-              </div>
-            ) : (
-              <iframe
-                ref={playerRef}
-                title={currentVideo.title}
-                src={`https://www.youtube-nocookie.com/embed/${currentVideo.id}?enablejsapi=1&rel=0&modestbranding=1&playsinline=1&fs=0&disablekb=1&iv_load_policy=3&controls=0`}
-                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                referrerPolicy="strict-origin-when-cross-origin"
-                sandbox="allow-scripts allow-same-origin allow-presentation"
-              />
-            )
-          ) : (
-            <div className="lock-screen">
-              <strong>今天先休息</strong>
-              <span>明天再一起選影片</span>
-            </div>
-          )}
-        </div>
-
-        <div className="kid-big-controls" aria-label="酸菜播放控制">
-          <button
-            className="secondary-kid-control"
-            type="button"
-            disabled={!hasMultipleVideos || isLocked}
-            onClick={() => chooseVideo(currentVideoIndex - 1)}
-          >
-            上一支
-          </button>
-          <button
-            className="primary-kid-control"
-            type="button"
-            disabled={!canPlay}
-            onClick={togglePlayback}
-          >
-            {isPlaying ? "暫停影片" : "播放影片"}
-          </button>
-          <button
-            className="secondary-kid-control"
-            type="button"
-            disabled={!hasMultipleVideos || isLocked}
-            onClick={() => chooseVideo(currentVideoIndex + 1)}
-          >
-            下一支
-          </button>
         </div>
 
         <div className="kid-video-strip">
