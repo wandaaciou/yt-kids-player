@@ -13,6 +13,7 @@ export default function KidsPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const playerRef = useRef<HTMLIFrameElement>(null);
   const playerShellRef = useRef<HTMLElement>(null);
+  const previousStatusRef = useRef(control.status);
 
   useEffect(() => {
     readControl();
@@ -53,7 +54,33 @@ export default function KidsPage() {
 
   useEffect(() => {
     setIsPlaying(false);
-  }, [control.currentVideoId, control.status]);
+  }, [control.currentVideoId]);
+
+  useEffect(() => {
+    const previousStatus = previousStatusRef.current;
+    previousStatusRef.current = control.status;
+
+    if (!currentVideo || isLocked || control.status === "paused") {
+      sendPlayerCommand("pauseVideo");
+      setIsPlaying(false);
+      return;
+    }
+
+    if (control.status === "allowed" && previousStatus === "paused") {
+      const quickResumeId = window.setTimeout(() => {
+        sendPlayerCommand("playVideo");
+      }, 120);
+      const fallbackResumeId = window.setTimeout(() => {
+        sendPlayerCommand("playVideo");
+        setIsPlaying(true);
+      }, 650);
+
+      return () => {
+        window.clearTimeout(quickResumeId);
+        window.clearTimeout(fallbackResumeId);
+      };
+    }
+  }, [control.status, currentVideo?.id, isLocked]);
 
   useEffect(() => {
     function syncFullscreenState() {
@@ -146,12 +173,7 @@ export default function KidsPage() {
 
           <div className="player-frame">
             {currentVideo && !isLocked ? (
-              control.status === "paused" ? (
-                <div className="lock-screen">
-                  <strong>暫停中</strong>
-                  <span>等媽媽說可以再繼續</span>
-                </div>
-              ) : (
+              <>
                 <iframe
                   ref={playerRef}
                   title={currentVideo.title}
@@ -160,7 +182,13 @@ export default function KidsPage() {
                   referrerPolicy="strict-origin-when-cross-origin"
                   sandbox="allow-scripts allow-same-origin allow-presentation"
                 />
-              )
+                {control.status === "paused" ? (
+                  <div className="lock-screen pause-screen">
+                    <strong>暫停中</strong>
+                    <span>等媽媽說可以再繼續</span>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="lock-screen">
                 <strong>今天先休息</strong>
