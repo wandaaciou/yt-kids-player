@@ -20,6 +20,8 @@ export default function ParentPage() {
   const [searchStatus, setSearchStatus] = useState("搜尋 YouTube 中");
   const [searchNonce, setSearchNonce] = useState(0);
   const [cloudStatus, setCloudStatus] = useState("連線雲端中");
+  const [pendingVideoIds, setPendingVideoIds] = useState<string[]>([]);
+  const [pendingControl, setPendingControl] = useState(false);
 
   useEffect(() => {
     loadControl();
@@ -111,37 +113,55 @@ export default function ParentPage() {
       (item) => item.id === video.id,
     );
 
-    if (alreadyApproved || !canAddMore) {
+    if (alreadyApproved || !canAddMore || pendingVideoIds.includes(video.id)) {
       return;
     }
 
-    const response = await fetch("/api/family/videos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(video),
-    });
+    setPendingVideoIds((ids) => [...ids, video.id]);
+    setCloudStatus("加入影片中");
 
-    if (response.ok) {
-      setControl((await response.json()) as PlayerControl);
-      setCloudStatus("雲端同步中");
-    } else {
-      setCloudStatus("雲端寫入失敗");
+    try {
+      const response = await fetch("/api/family/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(video),
+      });
+
+      if (response.ok) {
+        setControl((await response.json()) as PlayerControl);
+        setCloudStatus("雲端同步中");
+      } else {
+        setCloudStatus("雲端寫入失敗");
+      }
+    } finally {
+      setPendingVideoIds((ids) => ids.filter((id) => id !== video.id));
     }
   }
 
   async function removeVideo(videoId: string) {
-    const response = await fetch(
-      `/api/family/videos?id=${encodeURIComponent(videoId)}`,
-      {
-        method: "DELETE",
-      },
-    );
+    if (pendingVideoIds.includes(videoId)) {
+      return;
+    }
 
-    if (response.ok) {
-      setControl((await response.json()) as PlayerControl);
-      setCloudStatus("雲端同步中");
-    } else {
-      setCloudStatus("雲端移除失敗");
+    setPendingVideoIds((ids) => [...ids, videoId]);
+    setCloudStatus("移除影片中");
+
+    try {
+      const response = await fetch(
+        `/api/family/videos?id=${encodeURIComponent(videoId)}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (response.ok) {
+        setControl((await response.json()) as PlayerControl);
+        setCloudStatus("雲端同步中");
+      } else {
+        setCloudStatus("雲端移除失敗");
+      }
+    } finally {
+      setPendingVideoIds((ids) => ids.filter((id) => id !== videoId));
     }
   }
 
@@ -150,17 +170,28 @@ export default function ParentPage() {
     currentVideoId?: string;
     timer?: number;
   }) {
-    const response = await fetch("/api/family/state", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
+    if (pendingControl) {
+      return;
+    }
 
-    if (response.ok) {
-      setControl((await response.json()) as PlayerControl);
-      setCloudStatus("雲端同步中");
-    } else {
-      setCloudStatus("雲端更新失敗");
+    setPendingControl(true);
+    setCloudStatus("更新控制中");
+
+    try {
+      const response = await fetch("/api/family/state", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+
+      if (response.ok) {
+        setControl((await response.json()) as PlayerControl);
+        setCloudStatus("雲端同步中");
+      } else {
+        setCloudStatus("雲端更新失敗");
+      }
+    } finally {
+      setPendingControl(false);
     }
   }
 
@@ -243,6 +274,7 @@ export default function ParentPage() {
               const approved = control.approvedVideos.some(
                 (item) => item.id === video.id,
               );
+              const pending = pendingVideoIds.includes(video.id);
 
               return (
                 <article className="video-row" key={video.id}>
@@ -254,10 +286,10 @@ export default function ParentPage() {
                   </div>
                   <button
                     type="button"
-                    disabled={approved || !canAddMore}
+                    disabled={approved || !canAddMore || pending}
                     onClick={() => approveVideo(video)}
                   >
-                    {approved ? "已加入" : "允許"}
+                    {pending ? "加入中" : approved ? "已加入" : "允許"}
                   </button>
                 </article>
               );
@@ -274,15 +306,24 @@ export default function ParentPage() {
           </div>
 
           <div className="button-grid">
-            <button type="button" onClick={() => updateControl({ status: "allowed" })}>
+            <button
+              type="button"
+              disabled={pendingControl}
+              onClick={() => updateControl({ status: "allowed" })}
+            >
               繼續
             </button>
-            <button type="button" onClick={() => updateControl({ status: "paused" })}>
+            <button
+              type="button"
+              disabled={pendingControl}
+              onClick={() => updateControl({ status: "paused" })}
+            >
               暫停
             </button>
             <button
               className="danger-button"
               type="button"
+              disabled={pendingControl}
               onClick={() => updateControl({ status: "locked" })}
             >
               今天結束
@@ -316,12 +357,17 @@ export default function ParentPage() {
               >
                 <button
                   type="button"
+                  disabled={pendingControl}
                   onClick={() => updateControl({ currentVideoId: video.id })}
                 >
                   {video.title}
                 </button>
-                <button type="button" onClick={() => removeVideo(video.id)}>
-                  移除
+                <button
+                  type="button"
+                  disabled={pendingVideoIds.includes(video.id)}
+                  onClick={() => removeVideo(video.id)}
+                >
+                  {pendingVideoIds.includes(video.id) ? "移除中" : "移除"}
                 </button>
               </article>
             ))}

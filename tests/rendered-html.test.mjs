@@ -43,6 +43,8 @@ test("product source keeps parent approval and child playback separated", async 
   assert.match(homePage, /href="\/parent"/);
   assert.match(homePage, /href="\/kids"/);
   assert.match(parentPage, /家長手機/);
+  assert.match(parentPage, /加入中/);
+  assert.match(parentPage, /移除中/);
   assert.match(parentPage, /\/api\/youtube\/search/);
   assert.match(parentPage, /\/api\/family\/state/);
   assert.match(parentPage, /\/api\/family\/videos/);
